@@ -1,19 +1,28 @@
+"""
+Small, reusable helper around the OpenAI Chat Completions API.
+
+Why have this?
+- So every service can call LLMs the same way
+- Central place to set temperature, model, etc.
+- Easy to swap providers later (Anthropic, Azure OpenAI, etc.)
+"""
 import os
-from typing import List, Dict
 from dotenv import load_dotenv
 from openai import OpenAI
 
-load_dotenv()
-
-# If using OpenAI's responses API (chat completions-style):
-
+load_dotenv()  # reads .env in project root
 _client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-def complete(prompt: str, system: str = "You are a helpful engineer.") -> str:
-    rsp = _client.chat.completions.create(
-        model="gpt-4o-mini",
+
+def complete(prompt: str, system: str = "You are a helpful engineer.", temperature: float = 0.2) -> str:
+    """
+    Send a simple system+user prompt to the chat model and return text.
+    """
+    resp = _client.chat.completions.create(
+        model=DEFAULT_MODEL,
         messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
-        temperature=0.2,
+        temperature=temperature,
     )
-    return rsp.choices[0].message.content
+    return resp.choices[0].message.content
