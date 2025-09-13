@@ -1,0 +1,17 @@
+@"
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+# Local data
+datascribe_demo.db
+
+# Secrets (keep your keys local)
+.env
+"@ | Out-File -Encoding utf8 .gitignore
