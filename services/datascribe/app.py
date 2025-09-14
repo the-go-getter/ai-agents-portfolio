@@ -12,6 +12,7 @@ from pydantic import BaseModel
 import sqlite3
 import pandas as pd
 from common.llm_utils import complete
+import re
 
 DB_PATH = "datascribe_demo.db"  # created by the seeding script
 app = FastAPI(title="DataScribe Agent")
@@ -29,6 +30,25 @@ Rules:
 """
 
 
+def _sanitize_sql(raw: str) -> str:
+    """Normalize likely LLM output into a single plain SELECT statement."""
+    s = (raw or "").strip()
+
+    # Strip ```sql ... ``` or ``` ... ```
+    if s.startswith("```"):
+        s = re.sub(r"^```(?:sql)?\s*", "", s, flags=re.IGNORECASE)
+        s = re.sub(r"\s*```$", "", s)
+
+    # Remove leading "SQL:" label if present
+    s = re.sub(r"^\s*SQL\s*:\s*", "", s, flags=re.IGNORECASE).strip()
+
+    # Keep only the first statement (drop trailing prose or extra statements)
+    if ";" in s:
+        s = s.split(";", 1)[0].strip()
+
+    return s
+
+
 @app.post("/query")
 def query(nl: NLQuery):
     """
@@ -37,15 +57,19 @@ def query(nl: NLQuery):
     # Ask the LLM for ONLY an SQL SELECT statement
     sql = complete(f"Question:\n{nl.question}\nReturn only SQL:", SQL_SYS).strip()
 
-    # Handle fenced code from the model if present
+    # Handle fenced code and normalize typical LLM formatting
     if "```" in sql:
-        # Keep the code portion that contains 'select'
         candidates = [p for p in sql.split("```") if "select" in p.lower()]
         if candidates:
             sql = candidates[0].strip()
 
-    # Guardrail: block anything suspicious (very basic check)
+    # Extra normalization/sanitization
+    sql = _sanitize_sql(sql)
+
+    # Guardrail: only allow SELECTs; reject DDL/DML keywords
     lowered = sql.lower()
+    if not re.match(r"^\s*select\b", lowered):
+        raise HTTPException(status_code=400, detail="Only SELECT queries are allowed.")
     if any(word in lowered for word in ["insert", "update", "delete", "drop", "create", "alter"]):
         raise HTTPException(status_code=400, detail="Refusing non-SELECT SQL for safety.")
 
@@ -58,3 +82,4 @@ def query(nl: NLQuery):
         raise HTTPException(status_code=400, detail=f"SQL error: {e}")
     finally:
         con.close()
+
