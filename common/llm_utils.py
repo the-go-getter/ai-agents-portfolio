@@ -38,8 +38,8 @@ ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(dotenv_path=ROOT / ".env", override=True)
 
 USE_MOCK: bool = os.getenv("OPENAI_OFFLINE", "0") == "1"
-# DEFAULT_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-DEFAULT_MODEL = "gpt-3.5-turbo"
+OPENAI_MODEL = "gpt-3.5-turbo"
+DEFAULT_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 DEFAULT_TIMEOUT_S: float = float(os.getenv("OPENAI_TIMEOUT_S", "30"))
 DEFAULT_MAX_RETRIES: int = int(os.getenv("OPENAI_MAX_RETRIES", "2"))
 BASE_URL: Optional[str] = os.getenv("OPENAI_BASE_URL") or None
